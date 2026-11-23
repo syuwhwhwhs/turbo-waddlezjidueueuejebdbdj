@@ -1,50 +1,84 @@
+
 import requests
+from io import BytesIO
 from pathlib import Path
+from getpass import getpass
 
-BOT_TOKEN = "8987582737:AAFIa1hbNPi4yFJ4_c7-JMJTcX_jPrpzOgw"
-
-# Custom Emoji ID
-EMOJI_ID = "6010097807745094965"
+# دریافت توکن هنگام اجرا
+BOT_TOKEN = getpass("توکن ربات را وارد کن: ").strip()
 
 API = f"https://api.telegram.org/bot{BOT_TOKEN}"
 
-# دریافت اطلاعات فایل
-r = requests.post(
-    f"{API}/getCustomEmojiStickers",
-    json={"custom_emoji_ids": [EMOJI_ID]}
-)
-r.raise_for_status()
 
-data = r.json()
+def get_emoji_file(emoji_id):
+    # دریافت اطلاعات ایموجی
+    r = requests.post(
+        f"{API}/getCustomEmojiStickers",
+        json={"custom_emoji_ids": [emoji_id]},
+        timeout=30
+    )
+    r.raise_for_status()
+    data = r.json()
 
-if not data["ok"] or not data["result"]:
-    raise Exception(data)
+    if not data.get("ok") or not data.get("result"):
+        raise Exception("ایموجی پیدا نشد یا دسترسی API وجود ندارد")
 
-sticker = data["result"][0]
-file_id = sticker["file_id"]
+    sticker = data["result"][0]
+    file_id = sticker["file_id"]
 
-# دریافت مسیر فایل
-r = requests.get(
-    f"{API}/getFile",
-    params={"file_id": file_id}
-)
-r.raise_for_status()
+    # دریافت مسیر فایل
+    r = requests.get(
+        f"{API}/getFile",
+        params={"file_id": file_id},
+        timeout=30
+    )
+    r.raise_for_status()
+    file_data = r.json()
 
-file_path = r.json()["result"]["file_path"]
+    if not file_data.get("ok"):
+        raise Exception("دریافت مسیر فایل ناموفق بود")
 
-# دانلود فایل اصلی
-url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+    file_path = file_data["result"]["file_path"]
 
-content = requests.get(url)
-content.raise_for_status()
+    # دانلود فایل
+    url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+    r = requests.get(url, timeout=60)
+    r.raise_for_status()
 
-output = Path("downloaded_emojis")
-output.mkdir(exist_ok=True)
+    return Path(file_path).name, r.content
 
-save_path = output / Path(file_path).name
-save_path.write_bytes(content.content)
 
-print("Downloaded:", save_path)
-print("Format:", save_path.suffix)
-print("Size:", len(content.content), "bytes")
+def main():
+    print("Emoji Downloader")
+    print("برای خروج exit بنویس")
 
+    while True:
+        emoji_id = input("\nشناسه ایموجی: ").strip()
+
+        if emoji_id.lower() == "exit":
+            break
+
+        if not emoji_id.isdigit():
+            print("❌ شناسه باید عددی باشد")
+            continue
+
+        try:
+            filename, content = get_emoji_file(emoji_id)
+
+            # ذخیره فایل روی سرور
+            output = Path("downloaded_emojis")
+            output.mkdir(exist_ok=True)
+            save_path = output / filename
+            save_path.write_bytes(content)
+
+            print("✅ دانلود موفق")
+            print("فایل:", save_path)
+            print("فرمت:", save_path.suffix)
+            print("حجم:", len(content), "bytes")
+
+        except Exception as e:
+            print("❌ خطا:", e)
+
+
+if __name__ == "__main__":
+    main()
