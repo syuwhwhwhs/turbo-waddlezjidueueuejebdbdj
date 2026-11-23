@@ -1,10 +1,8 @@
 
-import os
 import logging
 from getpass import getpass
 from pathlib import Path
 
-import requests
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -13,109 +11,106 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
+from telethon import TelegramClient
+from telethon.tl.functions.messages import GetCustomEmojiDocumentsRequest
 
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-# دریافت توکن هنگام اجرای برنامه
-BOT_TOKEN = getpass("توکن ربات را وارد کنید: ").strip()
+# اطلاعات ورود در ترمینال سرور، نه در GitHub
+BOT_TOKEN = getpass("Bot Token: ").strip()
+API_ID = int(input("Telegram API ID: ").strip())
+API_HASH = getpass("Telegram API HASH: ").strip()
+PHONE = input("Telegram phone (+country code): ").strip()
 
-API = f"https://api.telegram.org/bot{BOT_TOKEN}"
+SESSION_NAME = "emoji_user_session"
+DOWNLOAD_DIR = Path("downloaded_emojis")
+DOWNLOAD_DIR.mkdir(exist_ok=True)
+
+user_client = TelegramClient(SESSION_NAME, API_ID, API_HASH)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
+        "✨ Emoji Premium Downloader\n\n"
         "ورود به ربات\n"
-        "لطفاً آیدی ایموجی پریموم را بدهید تا فایل را بدم"
+        "لطفاً آیدی ایموجی پریموم را بدهید تا فایل را بدم\n\n"
+        "مثال:\n"
+        "6034955549445984368"
     )
 
 
-async def download_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    emoji_id = update.message.text.strip()
+async def get_emoji(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.strip()
 
-    if not emoji_id.isdigit():
-        await update.message.reply_text(
-            "❌ لطفاً فقط آیدی عددی ایموجی پریمیوم را ارسال کنید."
-        )
+    if not text.isdigit():
+        await update.message.reply_text("❌ لطفاً فقط آیدی عددی ایموجی را بفرست.")
         return
 
-    msg = await update.message.reply_text("⏳ در حال دریافت ایموجی...")
+    status = await update.message.reply_text("🔎 در حال پیدا کردن ایموجی...")
 
     try:
-        # دریافت Custom Emoji
-        response = requests.post(
-            f"{API}/getCustomEmojiStickers",
-            json={"custom_emoji_ids": [emoji_id]},
-            timeout=30,
+        result = await user_client(
+            GetCustomEmojiDocumentsRequest(document_id=[int(text)])
         )
-        data = response.json()
 
-        if not data.get("ok") or not data.get("result"):
-            await msg.edit_text("❌ ایموجی پیدا نشد یا API دریافت آن را پشتیبانی نمی‌کند.")
+        if not result:
+            await status.edit_text("❌ ایموجی پیدا نشد.")
             return
 
-        sticker = data["result"][0]
-        file_id = sticker["file_id"]
+        document = result[0]
 
-        # دریافت مسیر فایل
-        response = requests.get(
-            f"{API}/getFile",
-            params={"file_id": file_id},
-            timeout=30,
+        # فایل اصلی ایموجی دانلود می‌شود
+        saved = await user_client.download_media(
+            document,
+            file=str(DOWNLOAD_DIR) + "/"
         )
-        file_data = response.json()
 
-        if not file_data.get("ok"):
-            await msg.edit_text("❌ دریافت مسیر فایل ناموفق بود.")
+        if not saved:
+            await status.edit_text("❌ دانلود فایل ناموفق بود.")
             return
 
-        file_path = file_data["result"]["file_path"]
-        file_name = Path(file_path).name
+        file_path = Path(saved)
+        await status.edit_text("📤 در حال ارسال فایل...")
 
-        # دانلود فایل
-        download_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
-        response = requests.get(download_url, timeout=60)
-        response.raise_for_status()
-
-        # ذخیره موقت روی سرور
-        folder = Path("downloaded_emojis")
-        folder.mkdir(exist_ok=True)
-
-        save_path = folder / file_name
-        save_path.write_bytes(response.content)
-
-        # ارسال فایل به کاربر
-        with open(save_path, "rb") as f:
+        with open(file_path, "rb") as f:
             await update.message.reply_document(
                 document=f,
-                filename=file_name,
-                caption=f"✅ فایل ایموجی دریافت شد\nID: {emoji_id}",
+                filename=file_path.name,
+                caption=f"✨ فایل ایموجی دریافت شد\n🆔 {text}"
             )
 
-        await msg.delete()
+        await status.delete()
 
     except Exception as e:
-        logging.exception("Emoji download error")
-        await msg.edit_text(f"❌ خطا در دریافت ایموجی:\n{e}")
+        logging.exception("Emoji extraction failed")
+        await status.edit_text(f"❌ خطا:\n{str(e)[:3000]}")
 
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "برای دریافت فایل ایموجی پریمیوم:\n"
-        "آیدی عددی ایموجی را ارسال کنید."
-    )
+async def main():
+    print("🔐 Connecting Telegram user account...")
+    await user_client.start(phone=PHONE)
+    print("✅ Telegram user connected.")
 
-
-def main():
     app = Application.builder().token(BOT_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, download_emoji))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, get_emoji))
 
-    print("Emoji Bot is running...")
-    app.run_polling()
+    print("🚀 Emoji Bot is running!")
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()
+
+    try:
+        import asyncio
+        await asyncio.Event().wait()
+    finally:
+        await app.updater.stop()
+        await app.stop()
+        await app.shutdown()
+        await user_client.disconnect()
 
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
