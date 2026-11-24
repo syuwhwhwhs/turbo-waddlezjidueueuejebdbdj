@@ -1,0 +1,15 @@
+[Unit]
+Description=Taha Emoji Studio Mini App API
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/taha_emoji_studio
+EnvironmentFile=/opt/taha_emoji_studio/.env
+ExecStart=/opt/taha_emoji_studio/.venv/bin/python server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
