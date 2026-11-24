@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#e8eafa"><script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/static/style.css"><title>RoXeT BoT</title>
+</head>
+<body>
+<main class="app-shell">
+  <header class="topbar">
+    <div class="brand-mark">R</div><div class="brand-copy"><b>RoXeT BoT</b><small id="subtitle">استودیوی ایموجی پرمیوم</small></div>
+    <select id="language" aria-label="Language" onchange="setLang(this.value)"><option value="fa">🇮🇷 فارسی</option><option value="en">🇬🇧 English</option></select>
+  </header>
+  <section class="hero-card"><div class="hero-glow"></div><div class="eyebrow" id="hello">WELCOME TO ROXET</div><h1 id="username">RoXeT BoT</h1><p id="desc">ایموجی پرمیوم خودت را با اسم یا لوگوی دلخواه شخصی‌سازی کن.</p><button class="hero-action" onclick="tab('create')" id="start">شروع ساخت <span>✦</span></button><div class="hero-orbit orbit-one"></div><div class="hero-orbit orbit-two"></div></section>
+  <section id="home" class="page-section">
+    <div class="section-heading"><div><small id="homeEyebrow">YOUR CREATIVE SPACE</small><h2 id="homeTitle">استودیوی ساخت ایموجی</h2></div><span class="heading-dot">✦</span></div>
+    <p class="section-desc" id="homeDesc">آیدی ایموجی پرمیوم را وارد کن، پیش‌نمایش را ببین و آن را با متن یا لوگوی خودت بساز.</p>
+    <div class="feature-grid">
+      <button class="feature-card" onclick="tab('create')"><span class="feature-icon blue">✧</span><b id="featureCreate">ساخت ایموجی</b><small id="featureCreateDesc">با آیدی اختصاصی</small></button>
+      <button class="feature-card" onclick="tab('packs')"><span class="feature-icon violet">▱</span><b id="featurePacks">پک‌های من</b><small id="featurePacksDesc">نتایج و درخواست‌ها</small></button>
+    </div>
+    <div class="info-strip"><span class="info-icon">⚡</span><div><b id="fastTitle">پیش‌نمایش سریع</b><small id="fastDesc">پس از واردکردن آیدی، ایموجی برایت نمایش داده می‌شود.</small></div></div>
+  </section>
+  <section id="create" class="page-section" hidden>
+    <div class="section-heading"><div><small id="createEyebrow">EMOJI WORKSHOP</small><h2 id="createTitle">ساخت ایموجی</h2></div><span class="heading-dot">✦</span></div>
+    <div class="panel-card"><label id="idLabel">آیدی ایموجی پرمیوم</label><input id="emojiId" placeholder="Custom Emoji ID" inputmode="numeric" autocomplete="off"><button class="primary-button" onclick="lookup()" id="find">پیدا کردن ایموجی</button><div id="result" class="result"></div>
+      <div id="emojiPreviewBox" class="preview-box" hidden><div class="preview-halo"><img id="emojiPreview" alt="Emoji preview"><video id="emojiPreviewVideo" autoplay muted loop playsinline hidden></video></div><small id="previewCaption"></small></div>
+      <div id="editor" hidden><div class="editor-divider"></div><h3 id="choose">شخصی‌سازی ایموجی</h3><div class="choice-row"><button onclick="chooseMode('text')" id="text" class="choice-button selected">تغییر اسم</button><button onclick="chooseMode('logo')" id="logoBtn" class="choice-button">افزودن لوگو</button></div><div id="textInputWrap"><input id="replacement" placeholder="متن جدید"></div><div id="logoInputWrap" hidden><label id="logoLabel">انتخاب لوگو از گالری</label><input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp"><img id="logoPreview" alt="Logo preview" hidden class="logo-preview"></div><small id="replaceHelp" class="helper-text">برای لوگو PNG، JPG یا WEBP انتخاب کن.</small><button class="primary-button" onclick="createJob()" id="make">ساخت و ارسال به ربات</button><small id="notice" class="helper-text">فایل نهایی در چت ربات برایت ارسال می‌شود.</small></div>
+    </div>
+  </section>
+  <section id="packs" class="page-section" hidden><div class="section-heading"><div><small id="packsEyebrow">YOUR COLLECTION</small><h2 id="packsTitle">پک‌ها و درخواست‌های من</h2></div><span class="heading-dot">▱</span></div><div class="panel-card"><button class="primary-button" onclick="loadPacks()" id="refresh">به‌روزرسانی</button><div id="packList"></div></div></section>
+  <section id="profile" class="page-section" hidden><div class="section-heading"><div><small id="profileEyebrow">ACCOUNT</small><h2 id="profileTitle">پروفایل</h2></div><span class="heading-dot">◉</span></div><div class="panel-card profile-card"><div class="profile-avatar">R</div><p id="profileInfo"></p><label id="profileLanguage">زبان برنامه</label><select id="profileLang" onchange="setLang(this.value)"><option value="fa">فارسی</option><option value="en">English</option></select></div></section>
+  <section id="admin" class="page-section" hidden><div class="section-heading"><div><small>ROXET CONTROL</small><h2 id="adminTitle">مدیریت</h2></div><span class="heading-dot">⚙</span></div><div class="panel-card"><button class="primary-button" onclick="loadAdmin()" id="adminRefresh">آمار سامانه</button><pre id="adminStats"></pre></div></section>
+  <nav class="bottom-nav"><button onclick="tab('home')" id="nHome" class="nav-item active"><span>⌂</span><small>خانه</small></button><button onclick="tab('create')" id="nCreate" class="nav-item"><span>✧</span><small>ساخت</small></button><button onclick="tab('packs')" id="nPacks" class="nav-item"><span>▱</span><small>پک‌ها</small></button><button onclick="tab('profile')" id="nProfile" class="nav-item"><span>♙</span><small>پروفایل</small></button><button id="nAdmin" hidden onclick="tab('admin')" class="nav-item"><span>⛨</span><small>مدیریت</small></button></nav>
+  <footer>RoXeT BoT <span>·</span> Made with <b>♥</b></footer>
+</main><script src="/static/app.js"></script></body></html>
